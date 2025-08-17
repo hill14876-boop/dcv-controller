@@ -380,6 +380,7 @@
                     deferredPrompt = null;
                 });
             } else {
+                // Use a custom modal instead of alert()
                 alert('To add to home screen:\n\n1. Tap the Share button (⬆️)\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" to confirm');
             }
         }
@@ -394,6 +395,25 @@
             e.preventDefault();
             startInstance();
         });
+
+        // Add this new event listener to refresh the page when the app is revisited
+        window.addEventListener('pageshow', function(event) {
+            // Check if the page is being loaded from the bfcache (back-forward cache)
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
+
+        // Add a function for a fixed-time refresh (optional)
+        function fixedTimeRefresh() {
+            // Refresh every 5 minutes (300000 milliseconds)
+            setInterval(() => {
+                window.location.reload();
+            }, 300000);
+        }
+
+        // Uncomment the line below to enable fixed-time refresh
+        // fixedTimeRefresh();
     </script>
 </body>
 </html>
