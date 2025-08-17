@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DCV Controller">
+    <meta name="theme-color" content="#1f2937">
+    <title>DCV Instance Controller</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .logo p {
+            opacity: 0.8;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .start-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(76, 175, 80, 0.3);
+        }
+
+        .stop-btn {
+            background: linear-gradient(45deg, #f44336, #da190b);
+            color: white;
+        }
+
+        .stop-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(244, 67, 54, 0.3);
+        }
+
+        .status-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .status-card.error {
+            border-left-color: #f44336;
+        }
+
+        .status-card.warning {
+            border-left-color: #ff9800;
+        }
+
+        .dcv-link {
+            display: inline-block;
+            background: linear-gradient(45deg, #2196F3, #1976D2);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            margin-top: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .dcv-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(33, 150, 243, 0.3);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* PWA Install Banner */
+        .install-banner {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .install-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>🖥️ DCV Controller</h1>
+            <p>Secure Remote Desktop</p>
+        </div>
+
+        <div id="installBanner" class="install-banner hidden">
+            📱 Add this app to your home screen for quick access!
+            <br>
+            <button class="install-btn" onclick="showInstallInstructions()">Show Instructions</button>
+        </div>
+
+        <form id="dcvForm">
+            <div class="form-group">
+                <label for="username">Duo Username:</label>
+                <input type="text" id="username" name="username" placeholder="Enter your Duo username" required>
+            </div>
+
+            <div class="button-group">
+                <button type="button" class="start-btn" onclick="startInstance()">
+                    🚀 Start Instance
+                </button>
+                <button type="button" class="stop-btn" onclick="stopInstance()">
+                    🛑 Stop Instance
+                </button>
+            </div>
+        </form>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p id="loadingText">Processing request...</p>
+        </div>
+
+        <div id="status" class="hidden"></div>
+    </div>
+
+    <script>
+        const API_URL = 'https://9wg7zku23i.execute-api.us-east-1.amazonaws.com/prod/manage';
+        
+        // Save username to localStorage
+        const usernameInput = document.getElementById('username');
+        const savedUsername = localStorage.getItem('dcv_username');
+        if (savedUsername) {
+            usernameInput.value = savedUsername;
+        }
+
+        usernameInput.addEventListener('change', function() {
+            localStorage.setItem('dcv_username', this.value);
+        });
+
+        async function makeRequest(action, username = null) {
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+            const loadingText = document.getElementById('loadingText');
+            
+            // Show loading
+            loading.style.display = 'block';
+            status.classList.add('hidden');
+            
+            if (action === 'start') {
+                loadingText.textContent = 'Authenticating with Duo...';
+            } else {
+                loadingText.textContent = 'Stopping instance...';
+            }
+
+            try {
+                const payload = { action };
+                if (username) {
+                    payload.duo_username = username;
+                }
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                // Hide loading
+                loading.style.display = 'none';
+                
+                // Show status
+                showStatus(data, response.status === 200);
+                
+            } catch (error) {
+                loading.style.display = 'none';
+                showStatus({ error: `Network error: ${error.message}` }, false);
+            }
+        }
+
+        function showStatus(data, isSuccess) {
+            const status = document.getElementById('status');
+            status.classList.remove('hidden', 'fade-in');
+            
+            let statusClass = 'status-card';
+            if (!isSuccess) {
+                statusClass += ' error';
+            } else if (data.message && data.message.includes('Authentication')) {
+                statusClass += ' warning';
+            }
+            
+            let content = '';
+            
+            if (isSuccess && data.dcv_url) {
+                content = `
+                    <h3>✅ Instance Started Successfully!</h3>
+                    <p><strong>Status:</strong> ${data.message}</p>
+                    <p><strong>Username:</strong> ${data.username}</p>
+                    <p><strong>Ready in:</strong> ${data.estimated_ready_time}</p>
+                    <p><strong>Session expires:</strong> ${data.session_timeout}</p>
+                    <a href="${data.dcv_url}" target="_blank" class="dcv-link">🖥️ Open DCV Session</a>
+                    <p style="font-size: 12px; margin-top: 15px; opacity: 0.8;">
+                        💡 Tip: Bookmark the DCV link for direct access
+                    </p>
+                `;
+            } else if (isSuccess && data.message) {
+                content = `
+                    <h3>✅ Success</h3>
+                    <p>${data.message}</p>
+                `;
+            } else {
+                content = `
+                    <h3>❌ Error</h3>
+                    <p>${data.error || data.message || 'Unknown error occurred'}</p>
+                `;
+            }
+            
+            status.innerHTML = content;
+            status.className = statusClass + ' fade-in';
+        }
+
+        function startInstance() {
+            const username = document.getElementById('username').value.trim();
+            if (!username) {
+                showStatus({ error: 'Please enter your Duo username' }, false);
+                return;
+            }
+            makeRequest('start', username);
+        }
+
+        function stopInstance() {
+            makeRequest('stop');
+        }
+
+        // PWA functionality
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installBanner').classList.remove('hidden');
+        });
+
+        function showInstallInstructions() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        document.getElementById('installBanner').classList.add('hidden');
+                    }
+                    deferredPrompt = null;
+                });
+            } else {
+                alert('To add to home screen:\n\n1. Tap the Share button (⬆️)\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" to confirm');
+            }
+        }
+
+        // Show install banner on iOS Safari
+        if (window.navigator.standalone === false) {
+            document.getElementById('installBanner').classList.remove('hidden');
+        }
+
+        // Handle form submission
+        document.getElementById('dcvForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            startInstance();
+        });
+    </script>
+</body>
+</html>
