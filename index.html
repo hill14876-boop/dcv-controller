@@ -124,6 +124,18 @@
             box-shadow: 0 10px 20px rgba(244, 67, 54, 0.3);
         }
 
+        /* --- ADDED --- */
+        .refresh-btn {
+            background: linear-gradient(45deg, #2196F3, #1976D2);
+            color: white;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(33, 150, 243, 0.3);
+        }
+        /* --- END ADDED --- */
+
         .update-btn {
             background: linear-gradient(45deg, #FF9800, #F57C00);
             color: white;
@@ -249,12 +261,15 @@
 
             <div class="button-group">
                 <button type="button" class="start-btn" onclick="startInstance()">
-                    🚀 Start Instance
+                    🚀 Start
                 </button>
                 <button type="button" class="stop-btn" onclick="stopInstance()">
-                    🛑 Stop Instance
+                    🛑 Stop
                 </button>
-            </div>
+                <button type="button" class="refresh-btn" onclick="refreshStatus()">
+                    🔄 Refresh
+                </button>
+                </div>
         </form>
 
         <div id="loading" class="loading">
@@ -385,6 +400,13 @@
             makeRequest('stop');
         }
 
+        // --- ADDED ---
+        function refreshStatus() {
+            // true forces a reload from the server, not the cache
+            window.location.reload(true);
+        }
+        // --- END ADDED ---
+
         // PWA functionality
         let deferredPrompt;
 
@@ -412,12 +434,3 @@
         if (window.navigator.standalone === false) {
             document.getElementById('installBanner').classList.remove('hidden');
         }
-
-        // Handle form submission
-        document.getElementById('dcvForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            startInstance();
-        });
-    </script>
-</body>
-</html>
