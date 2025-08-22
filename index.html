@@ -124,6 +124,16 @@
             box-shadow: 0 10px 20px rgba(244, 67, 54, 0.3);
         }
 
+        .update-btn {
+            background: linear-gradient(45deg, #FF9800, #F57C00);
+            color: white;
+        }
+
+        .update-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(255, 152, 0, 0.3);
+        }
+
         .status-card {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 12px;
@@ -337,6 +347,14 @@
                     <p style="font-size: 12px; margin-top: 15px; opacity: 0.8;">
                         💡 Tip: Bookmark the DCV link for direct access
                     </p>
+                `;
+            } else if (isSuccess && data.update_available) {
+                content = `
+                    <h3>🔄 Update Available</h3>
+                    <p>${data.message}</p>
+                    <button onclick="window.location.reload(true)" class="dcv-link" style="display: inline-block; margin-top: 10px; cursor: pointer; border: none;">
+                        📱 Update App Now
+                    </button>
                 `;
             } else if (isSuccess && data.message) {
                 content = `
