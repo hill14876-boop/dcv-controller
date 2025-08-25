@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DCV Controller">
     <meta name="theme-color" content="#1f2937">
-    <meta name="app-version" content="1.0.2">
+    <meta name="app-version" content="1.0.1">
     <meta http-equiv="refresh" content="120">
     <title>DCV Instance Controller</title>
     <style>
@@ -257,8 +257,7 @@
     </div>
 
     <script>
-        // Replace this URL with your new Lambda Function URL (no API key needed!)
-        const API_URL = 'https://sxvfpzysvevsgcjvmmxtxmncxa0fyswk.lambda-url.us-east-1.on.aws/';
+        const API_URL = 'https://9wg7zku23i.execute-api.us-east-1.amazonaws.com/prod/manage';
         
         // Save username to localStorage
         const usernameInput = document.getElementById('username');
@@ -275,7 +274,6 @@
             const loading = document.getElementById('loading');
             const status = document.getElementById('status');
             const loadingText = document.getElementById('loadingText');
-            const ipAddress = document.getElementById('ip_address').value.trim();
             
             // Show loading
             loading.style.display = 'block';
@@ -292,15 +290,12 @@
                 if (username) {
                     payload.duo_username = username;
                 }
-                if (ipAddress) {
-                    payload.ip_address = ipAddress;
-                }
 
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
-                        // No API key needed!
+                        'Content-Type': 'application/json',
+                        'x-api-key': 'sQisWGeFXfaYl79IT7oJf69NgHEC2kfs4YOwj1yh'
                     },
                     body: JSON.stringify(payload)
                 });
