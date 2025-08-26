@@ -586,7 +586,21 @@
                     </div>
                 `;
             } else if (isSuccess && data.message) {
-                content = `<h3>✅ Success</h3><p>${data.message}</p>`;
+                content = `
+                    <h3>✅ Success</h3>
+                    <p>${data.message}</p>
+                `;
+
+                // Check if this is a message from the 'stop' action
+                if (data.message.includes('stopped') || data.message.includes('removed')) {
+                    // Immediately update the button to show a busy state
+                    const startBtn = document.getElementById('startBtn');
+                    startBtn.innerHTML = '⏳ Instance Busy';
+                    startBtn.disabled = true;
+
+                    // Resume automatic checks in case they were paused by a 'start' action
+                    resumeStatusChecks();
+                }
             } else if (data.error && data.error.includes('Duo')) {
                 content = `
                     <h3>📱 Duo Authentication Required</h3>
