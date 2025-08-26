@@ -7,9 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DCV Controller">
     <meta name="theme-color" content="#1f2937">
-    <meta name="app-version" content="1.0.1">
-    <meta http-equiv="refresh" content="120">
-    <title>DCV Instance Controller</title>
+    <title>DCV Instance Controller - Secure Access</title>
     <style>
         * {
             margin: 0;
@@ -57,6 +55,29 @@
             font-size: 14px;
         }
 
+        .security-info {
+            background: rgba(76, 175, 80, 0.2);
+            border-left: 3px solid #4CAF50;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+
+        .security-info strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .user-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            text-align: center;
+        }
+
         .form-group {
             margin-bottom: 25px;
         }
@@ -86,6 +107,15 @@
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
         }
 
+        .ip-display {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 13px;
+            text-align: center;
+        }
+
         .button-group {
             display: flex;
             gap: 15px;
@@ -110,7 +140,7 @@
             color: white;
         }
 
-        .start-btn:hover {
+        .start-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(76, 175, 80, 0.3);
         }
@@ -120,9 +150,34 @@
             color: white;
         }
 
-        .stop-btn:hover {
+        .stop-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(244, 67, 54, 0.3);
+        }
+
+        .login-btn {
+            background: linear-gradient(45deg, #2196F3, #1976D2);
+            color: white;
+            width: 100%;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(33, 150, 243, 0.3);
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .status-card {
@@ -139,6 +194,10 @@
 
         .status-card.warning {
             border-left-color: #ff9800;
+        }
+
+        .status-card.info {
+            border-left-color: #2196F3;
         }
 
         .dcv-link {
@@ -192,24 +251,21 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* PWA Install Banner */
-        .install-banner {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
+        .auth-container {
             text-align: center;
-            font-size: 14px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .install-btn {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            margin-top: 10px;
+        .auth-container p {
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+
+        .duo-notice {
+            background: rgba(255, 165, 0, 0.2);
+            border-left: 3px solid #ff9800;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 15px;
             font-size: 12px;
         }
     </style>
@@ -218,59 +274,233 @@
     <div class="container">
         <div class="logo">
             <h1>🖥️ DCV Controller</h1>
-            <p>Secure Remote Desktop</p>
+            <p>Ubuntu 22.04 LTS Secure Desktop</p>
         </div>
 
-        <div id="installBanner" class="install-banner hidden">
-            📱 Add this app to your home screen for quick access!
-            <br>
-            <button class="install-btn" onclick="showInstallInstructions()">Show Instructions</button>
-        </div>
-
-        <form id="dcvForm">
-            <div class="form-group">
-                <label for="username">Duo Username:</label>
-                <input type="text" id="username" name="username" placeholder="Enter your Duo username" required>
+        <!-- Login Section -->
+        <div id="loginSection" class="auth-container">
+            <div class="security-info">
+                <strong>🔐 Enhanced Security:</strong>
+                No API keys stored in browser • User authentication required • All actions logged
             </div>
             
-            <div class="form-group">
-                <label for="ip_address">Computer IP Address (Optional):</label>
-                <input type="text" id="ip_address" name="ip_address" placeholder="Leave blank to use this device's IP">
+            <p>Sign in to access your secure remote desktop</p>
+            <button class="login-btn" onclick="signIn()">
+                🔐 Sign In with AWS Cognito
+            </button>
+            
+            <div class="duo-notice">
+                <strong>Note:</strong> After signing in, you'll receive a Duo push notification when starting the instance
             </div>
-
-            <div class="button-group">
-                <button type="button" class="start-btn" onclick="startInstance()">
-                    🚀 Start Instance
-                </button>
-                <button type="button" class="stop-btn" onclick="stopInstance()">
-                    🛑 Stop Instance
-                </button>
-            </div>
-        </form>
-
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            <p id="loadingText">Processing request...</p>
         </div>
 
-        <div id="status" class="hidden"></div>
+        <!-- Main App Section (hidden until authenticated) -->
+        <div id="appSection" class="hidden">
+            <div class="user-info">
+                <strong>Authenticated User</strong><br>
+                <span id="userEmail">-</span>
+                <br>
+                <button class="logout-btn" onclick="signOut()">Sign Out</button>
+            </div>
+
+            <form id="dcvForm">
+                <div class="form-group">
+                    <label for="username">Duo Username:</label>
+                    <input type="text" id="username" name="username" placeholder="Enter your Duo username" required>
+                    <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">
+                        This should match your registered Duo Mobile username
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ip_address">Access IP Address:</label>
+                    <input type="text" id="ip_address" name="ip_address" placeholder="Auto-detected or enter manually">
+                    <div class="ip-display">
+                        <strong>Your detected IP:</strong> <span id="detectedIp">Detecting...</span>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="start-btn" onclick="startInstance()" id="startBtn">
+                        🚀 Start Instance
+                    </button>
+                    <button type="button" class="stop-btn" onclick="stopInstance()" id="stopBtn">
+                        🛑 Stop Instance
+                    </button>
+                </div>
+            </form>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p id="loadingText">Processing request...</p>
+            </div>
+
+            <div id="status" class="hidden"></div>
+        </div>
     </div>
 
     <script>
-        const API_URL = 'https://9wg7zku23i.execute-api.us-east-1.amazonaws.com/prod/manage';
-        
-        // Save username to localStorage
-        const usernameInput = document.getElementById('username');
-        const savedUsername = localStorage.getItem('dcv_username');
-        if (savedUsername) {
-            usernameInput.value = savedUsername;
-        }
+        // ===== CONFIGURATION - UPDATE THESE VALUES =====
+        const config = {
+            region: 'us-east-1',
+            userPoolId: 'us-east-1_XXXXXXXXX',  // Replace with your User Pool ID
+            clientId: 'XXXXXXXXXXXXXXXXXXXXXXXXXX',  // Replace with your App Client ID
+            cognitoDomain: 'dcv-controller-XXXXX',  // Replace with your Cognito domain prefix
+            apiGatewayUrl: 'https://9wg7zku23i.execute-api.us-east-1.amazonaws.com/prod/manage',
+            elasticIp: '3.214.88.198'  // Your DCV server IP
+        };
+        // ================================================
 
-        usernameInput.addEventListener('change', function() {
-            localStorage.setItem('dcv_username', this.value);
+        let idToken = null;
+        let accessToken = null;
+        let userEmail = null;
+        let detectedClientIp = null;
+
+        // Check if user is already logged in on page load
+        window.addEventListener('load', function() {
+            detectClientIp();
+            checkAuthStatus();
         });
 
-        async function makeRequest(action, username = null) {
+        // Detect client IP address
+        async function detectClientIp() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                detectedClientIp = data.ip;
+                document.getElementById('detectedIp').textContent = detectedClientIp;
+                
+                // Auto-fill IP field if empty
+                const ipInput = document.getElementById('ip_address');
+                if (!ipInput.value) {
+                    ipInput.placeholder = `Auto-detected: ${detectedClientIp}`;
+                }
+            } catch (error) {
+                document.getElementById('detectedIp').textContent = 'Unable to detect';
+                console.error('IP detection failed:', error);
+            }
+        }
+
+        function checkAuthStatus() {
+            // Check if we have tokens in session storage
+            idToken = sessionStorage.getItem('idToken');
+            accessToken = sessionStorage.getItem('accessToken');
+            userEmail = sessionStorage.getItem('userEmail');
+            
+            if (idToken && accessToken) {
+                // Verify token is not expired
+                try {
+                    const payload = JSON.parse(atob(idToken.split('.')[1]));
+                    const expirationTime = payload.exp * 1000;
+                    
+                    if (Date.now() < expirationTime) {
+                        showAppSection();
+                        document.getElementById('userEmail').textContent = userEmail || payload.email || 'Authenticated';
+                        
+                        // Restore saved Duo username if exists
+                        const savedDuoUsername = localStorage.getItem('duo_username');
+                        if (savedDuoUsername) {
+                            document.getElementById('username').value = savedDuoUsername;
+                        }
+                        
+                        checkInstanceStatus();
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Token validation failed:', e);
+                }
+                
+                // Token expired or invalid
+                clearSession();
+            }
+            
+            // Check for auth redirect from Cognito
+            handleAuthRedirect();
+        }
+
+        function handleAuthRedirect() {
+            // Parse hash fragment from Cognito redirect
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            
+            const idTokenFromUrl = params.get('id_token');
+            const accessTokenFromUrl = params.get('access_token');
+            
+            if (idTokenFromUrl && accessTokenFromUrl) {
+                // Save tokens
+                idToken = idTokenFromUrl;
+                accessToken = accessTokenFromUrl;
+                
+                // Parse user info from ID token
+                try {
+                    const payload = JSON.parse(atob(idToken.split('.')[1]));
+                    userEmail = payload.email || payload['cognito:username'];
+                    
+                    // Store in session
+                    sessionStorage.setItem('idToken', idToken);
+                    sessionStorage.setItem('accessToken', accessToken);
+                    sessionStorage.setItem('userEmail', userEmail);
+                    
+                    // Clean URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    
+                    // Show app
+                    showAppSection();
+                    document.getElementById('userEmail').textContent = userEmail;
+                    
+                    // Check instance status
+                    checkInstanceStatus();
+                } catch (e) {
+                    console.error('Failed to parse token:', e);
+                    showLoginSection();
+                }
+            } else {
+                showLoginSection();
+            }
+        }
+
+        function showLoginSection() {
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('appSection').classList.add('hidden');
+        }
+
+        function showAppSection() {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('appSection').classList.remove('hidden');
+        }
+
+        function signIn() {
+            const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+            const cognitoUrl = `https://${config.cognitoDomain}.auth.${config.region}.amazoncognito.com/login?client_id=${config.clientId}&response_type=token&scope=email+openid+profile&redirect_uri=${redirectUri}`;
+            
+            window.location.href = cognitoUrl;
+        }
+
+        function signOut() {
+            clearSession();
+            
+            // Redirect to Cognito logout
+            const logoutUri = encodeURIComponent(window.location.origin + window.location.pathname);
+            const cognitoUrl = `https://${config.cognitoDomain}.auth.${config.region}.amazoncognito.com/logout?client_id=${config.clientId}&logout_uri=${logoutUri}`;
+            
+            window.location.href = cognitoUrl;
+        }
+
+        function clearSession() {
+            sessionStorage.removeItem('idToken');
+            sessionStorage.removeItem('accessToken');
+            sessionStorage.removeItem('userEmail');
+            idToken = null;
+            accessToken = null;
+            userEmail = null;
+        }
+
+        // Save Duo username to localStorage
+        document.getElementById('username').addEventListener('change', function() {
+            localStorage.setItem('duo_username', this.value);
+        });
+
+        async function makeAuthenticatedRequest(action, duo_username = null, source_ip = null) {
             const loading = document.getElementById('loading');
             const status = document.getElementById('status');
             const loadingText = document.getElementById('loadingText');
@@ -280,22 +510,34 @@
             status.classList.add('hidden');
             
             if (action === 'start') {
-                loadingText.textContent = 'Authenticating with Duo...';
+                loadingText.textContent = '📱 Sending Duo push notification...';
+            } else if (action === 'stop') {
+                loadingText.textContent = 'Stopping instance and removing access...';
             } else {
-                loadingText.textContent = 'Stopping instance...';
+                loadingText.textContent = 'Checking instance status...';
             }
 
             try {
-                const payload = { action };
-                if (username) {
-                    payload.duo_username = username;
+                // Ensure we have valid token
+                if (!idToken) {
+                    throw new Error('Not authenticated. Please sign in.');
                 }
 
-                const response = await fetch(API_URL, {
+                const payload = { action };
+                if (duo_username) {
+                    payload.duo_username = duo_username;
+                }
+                if (source_ip) {
+                    payload.source_ip = source_ip;
+                } else if (detectedClientIp && action === 'start') {
+                    payload.source_ip = detectedClientIp;
+                }
+
+                const response = await fetch(config.apiGatewayUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'x-api-key': 'sQisWGeFXfaYl79IT7oJf69NgHEC2kfs4YOwj1yh'
+                        'Authorization': idToken
                     },
                     body: JSON.stringify(payload)
                 });
@@ -305,12 +547,26 @@
                 // Hide loading
                 loading.style.display = 'none';
                 
-                // Show status
-                showStatus(data, response.status === 200);
+                // Handle response
+                if (action === 'status') {
+                    // Silent status check
+                    if (data.instance_state === 'running') {
+                        document.getElementById('startBtn').innerHTML = '✅ Instance Running';
+                        document.getElementById('startBtn').disabled = false;
+                    } else if (data.instance_state === 'stopping' || data.instance_state === 'pending') {
+                        document.getElementById('startBtn').innerHTML = '⏳ Instance Busy';
+                        document.getElementById('startBtn').disabled = true;
+                    } else {
+                        document.getElementById('startBtn').innerHTML = '🚀 Start Instance';
+                        document.getElementById('startBtn').disabled = false;
+                    }
+                } else {
+                    showStatus(data, response.status === 200);
+                }
                 
             } catch (error) {
                 loading.style.display = 'none';
-                showStatus({ error: `Network error: ${error.message}` }, false);
+                showStatus({ error: `Request failed: ${error.message}` }, false);
             }
         }
 
@@ -321,22 +577,25 @@
             let statusClass = 'status-card';
             if (!isSuccess) {
                 statusClass += ' error';
-            } else if (data.message && data.message.includes('Authentication')) {
-                statusClass += ' warning';
+            } else if (data.message && data.message.includes('already running')) {
+                statusClass += ' info';
             }
             
             let content = '';
             
             if (isSuccess && data.dcv_url) {
+                const accessIp = data.client_ip || detectedClientIp || 'Your IP';
                 content = `
-                    <h3>✅ Instance Started Successfully!</h3>
-                    <p><strong>Status:</strong> ${data.message}</p>
-                    <p><strong>Username:</strong> ${data.username}</p>
-                    <p><strong>Ready in:</strong> ${data.estimated_ready_time}</p>
-                    <p><strong>Session expires:</strong> ${data.session_timeout}</p>
-                    <a href="${data.dcv_url}" target="_blank" class="dcv-link">🖥️ Open DCV Session</a>
+                    <h3>✅ Access Granted!</h3>
+                    <p><strong>Instance Status:</strong> ${data.message}</p>
+                    <p><strong>Authenticated as:</strong> ${data.cognito_user}</p>
+                    <p><strong>Duo User:</strong> ${data.duo_username}</p>
+                    <p><strong>Access granted for IP:</strong> ${accessIp}</p>
+                    <p><strong>Session timeout:</strong> ${data.session_timeout}</p>
+                    <p><strong>Ready time:</strong> ${data.estimated_ready_time}</p>
+                    <a href="${data.dcv_url}" target="_blank" class="dcv-link">🖥️ Connect to DCV Session</a>
                     <p style="font-size: 12px; margin-top: 15px; opacity: 0.8;">
-                        💡 Tip: Bookmark the DCV link for direct access
+                        💡 Instance: t3.medium (${config.elasticIp}) • Ubuntu 22.04 LTS with MATE Desktop
                     </p>
                 `;
             } else if (isSuccess && data.message) {
@@ -344,56 +603,53 @@
                     <h3>✅ Success</h3>
                     <p>${data.message}</p>
                 `;
+            } else if (data.error && data.error.includes('Duo')) {
+                content = `
+                    <h3>📱 Duo Authentication Required</h3>
+                    <p>${data.message || 'Check your Duo Mobile app for the push notification'}</p>
+                    <p style="margin-top: 10px; font-size: 14px;">If you didn't receive a push, check that your Duo username is correct.</p>
+                `;
+                statusClass += ' warning';
             } else {
                 content = `
                     <h3>❌ Error</h3>
                     <p>${data.error || data.message || 'Unknown error occurred'}</p>
+                    ${data.error && data.error.includes('Unauthorized') ? 
+                        '<p style="margin-top: 10px; font-size: 14px;">Your session may have expired. Please sign in again.</p>' : ''}
                 `;
             }
             
             status.innerHTML = content;
             status.className = statusClass + ' fade-in';
+            
+            // Refresh status after action
+            if (isSuccess) {
+                setTimeout(() => {
+                    checkInstanceStatus();
+                }, 3000);
+            }
         }
 
         function startInstance() {
             const username = document.getElementById('username').value.trim();
+            const sourceIp = document.getElementById('ip_address').value.trim();
+            
             if (!username) {
                 showStatus({ error: 'Please enter your Duo username' }, false);
                 return;
             }
-            makeRequest('start', username);
+            
+            makeAuthenticatedRequest('start', username, sourceIp || null);
         }
 
         function stopInstance() {
-            makeRequest('stop');
-        }
-
-        // PWA functionality
-        let deferredPrompt;
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            document.getElementById('installBanner').classList.remove('hidden');
-        });
-
-        function showInstallInstructions() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        document.getElementById('installBanner').classList.add('hidden');
-                    }
-                    deferredPrompt = null;
-                });
-            } else {
-                alert('To add to home screen:\n\n1. Tap the Share button (⬆️)\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" to confirm');
+            if (confirm('Are you sure you want to stop the instance and remove your access?')) {
+                makeAuthenticatedRequest('stop');
             }
         }
 
-        // Show install banner on iOS Safari
-        if (window.navigator.standalone === false) {
-            document.getElementById('installBanner').classList.remove('hidden');
+        function checkInstanceStatus() {
+            makeAuthenticatedRequest('status');
         }
 
         // Handle form submission
@@ -401,6 +657,26 @@
             e.preventDefault();
             startInstance();
         });
+
+        // Periodic status check
+        setInterval(() => {
+            if (idToken) {
+                // Check if token is still valid
+                try {
+                    const payload = JSON.parse(atob(idToken.split('.')[1]));
+                    if (Date.now() < payload.exp * 1000) {
+                        checkInstanceStatus();
+                    } else {
+                        // Token expired
+                        clearSession();
+                        showLoginSection();
+                        showStatus({ error: 'Session expired. Please sign in again.' }, false);
+                    }
+                } catch (e) {
+                    console.error('Token check failed:', e);
+                }
+            }
+        }, 30000); // Check every 30 seconds
     </script>
 </body>
 </html>
