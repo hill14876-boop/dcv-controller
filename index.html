@@ -318,6 +318,20 @@
                     </div>
                 </div>
 
+                <div class="form-group">
+                    <label>Ports to Open:</label>
+                    <div style="display: flex; gap: 20px; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 12px;">
+                        <label for="port_dcv" style="display: flex; align-items: center; cursor: pointer; font-weight: normal;">
+                            <input type="checkbox" id="port_dcv" value="8443" checked style="width: 20px; height: 20px; margin-right: 10px;">
+                            DCV (8443)
+                        </label>
+                        <label for="port_ssh" style="display: flex; align-items: center; cursor: pointer; font-weight: normal;">
+                            <input type="checkbox" id="port_ssh" value="22" style="width: 20px; height: 20px; margin-right: 10px;">
+                            SSH (22)
+                        </label>
+                    </div>
+                </div>
+
                 <div class="button-group">
                     <button type="button" class="start-btn" onclick="startInstance()" id="startBtn">
                         🚀 Start Instance
@@ -369,7 +383,6 @@
                 detectedClientIp = data.ip;
                 document.getElementById('detectedIp').textContent = detectedClientIp;
                 
-                // Auto-fill IP field if empty
                 const ipInput = document.getElementById('ip_address');
                 if (!ipInput.value) {
                     ipInput.placeholder = `Auto-detected: ${detectedClientIp}`;
@@ -381,13 +394,11 @@
         }
 
         function checkAuthStatus() {
-            // Check if we have tokens in session storage
             idToken = sessionStorage.getItem('idToken');
             accessToken = sessionStorage.getItem('accessToken');
             userEmail = sessionStorage.getItem('userEmail');
             
             if (idToken && accessToken) {
-                // Verify token is not expired
                 try {
                     const payload = JSON.parse(atob(idToken.split('.')[1]));
                     const expirationTime = payload.exp * 1000;
@@ -396,7 +407,6 @@
                         showAppSection();
                         document.getElementById('userEmail').textContent = userEmail || payload.email || 'Authenticated';
                         
-                        // Restore saved Duo username if exists
                         const savedDuoUsername = localStorage.getItem('duo_username');
                         if (savedDuoUsername) {
                             document.getElementById('username').value = savedDuoUsername;
@@ -408,46 +418,33 @@
                 } catch (e) {
                     console.error('Token validation failed:', e);
                 }
-                
-                // Token expired or invalid
                 clearSession();
             }
-            
-            // Check for auth redirect from Cognito
             handleAuthRedirect();
         }
 
         function handleAuthRedirect() {
-            // Parse hash fragment from Cognito redirect
             const hash = window.location.hash.substring(1);
             const params = new URLSearchParams(hash);
-            
             const idTokenFromUrl = params.get('id_token');
             const accessTokenFromUrl = params.get('access_token');
             
             if (idTokenFromUrl && accessTokenFromUrl) {
-                // Save tokens
                 idToken = idTokenFromUrl;
                 accessToken = accessTokenFromUrl;
                 
-                // Parse user info from ID token
                 try {
                     const payload = JSON.parse(atob(idToken.split('.')[1]));
                     userEmail = payload.email || payload['cognito:username'];
                     
-                    // Store in session
                     sessionStorage.setItem('idToken', idToken);
                     sessionStorage.setItem('accessToken', accessToken);
                     sessionStorage.setItem('userEmail', userEmail);
                     
-                    // Clean URL
                     window.history.replaceState({}, document.title, window.location.pathname);
                     
-                    // Show app
                     showAppSection();
                     document.getElementById('userEmail').textContent = userEmail;
-                    
-                    // Check instance status
                     checkInstanceStatus();
                 } catch (e) {
                     console.error('Failed to parse token:', e);
@@ -470,16 +467,12 @@
 
         function signIn() {
             window.location.href = 'https://us-east-1jjeyrfanj.auth.us-east-1.amazoncognito.com/login?client_id=7dkrkqdiasniqsvs5qdm2omlhf&response_type=token&scope=email+openid+profile&redirect_uri=' + encodeURIComponent('https://hill14876-boop.github.io/dcv-controller/');
-
         }
 
         function signOut() {
             clearSession();
-            
-            // Redirect to Cognito logout
             const logoutUri = encodeURIComponent(window.location.origin + window.location.pathname);
             const cognitoUrl = `https://${config.cognitoDomain}.auth.${config.region}.amazoncognito.com/logout?client_id=${config.clientId}&logout_uri=${logoutUri}`;
-            
             window.location.href = cognitoUrl;
         }
 
@@ -492,17 +485,15 @@
             userEmail = null;
         }
 
-        // Save Duo username to localStorage
         document.getElementById('username').addEventListener('change', function() {
             localStorage.setItem('duo_username', this.value);
         });
 
-        async function makeAuthenticatedRequest(action, duo_username = null, source_ip = null) {
+        async function makeAuthenticatedRequest(action, duo_username = null, source_ip = null, ports = null) {
             const loading = document.getElementById('loading');
             const status = document.getElementById('status');
             const loadingText = document.getElementById('loadingText');
             
-            // Show loading
             loading.style.display = 'block';
             status.classList.add('hidden');
             
@@ -515,38 +506,27 @@
             }
 
             try {
-                // Ensure we have valid token
-                if (!idToken) {
-                    throw new Error('Not authenticated. Please sign in.');
-                }
+                if (!idToken) throw new Error('Not authenticated. Please sign in.');
 
                 const payload = { action };
-                if (duo_username) {
-                    payload.duo_username = duo_username;
-                }
-                if (source_ip) {
-                    payload.source_ip = source_ip;
-                } else if (detectedClientIp && action === 'start') {
-                    payload.source_ip = detectedClientIp;
+                if (duo_username) payload.duo_username = duo_username;
+                if (source_ip) payload.source_ip = source_ip;
+                else if (detectedClientIp && action === 'start') payload.source_ip = detectedClientIp;
+
+                if (ports && action === 'start') {
+                    payload.ports_to_open = ports;
                 }
 
                 const response = await fetch(config.apiGatewayUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': idToken
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': idToken },
                     body: JSON.stringify(payload)
                 });
 
                 const data = await response.json();
-                
-                // Hide loading
                 loading.style.display = 'none';
                 
-                // Handle response
                 if (action === 'status') {
-                    // Silent status check
                     if (data.instance_state === 'running') {
                         document.getElementById('startBtn').innerHTML = '✅ Instance Running';
                         document.getElementById('startBtn').disabled = false;
@@ -560,7 +540,6 @@
                 } else {
                     showStatus(data, response.status === 200);
                 }
-                
             } catch (error) {
                 loading.style.display = 'none';
                 showStatus({ error: `Request failed: ${error.message}` }, false);
@@ -572,39 +551,42 @@
             status.classList.remove('hidden', 'fade-in');
             
             let statusClass = 'status-card';
-            if (!isSuccess) {
-                statusClass += ' error';
-            } else if (data.message && data.message.includes('already running')) {
-                statusClass += ' info';
-            }
+            if (!isSuccess) statusClass += ' error';
+            else if (data.message && data.message.includes('already running')) statusClass += ' info';
             
             let content = '';
             
-            if (isSuccess && data.dcv_url) {
-                // 1. Stop the automatic timer
+            if (isSuccess && (data.ports_opened && data.ports_opened.length > 0)) {
                 if (statusIntervalId) {
                     clearInterval(statusIntervalId);
-                    statusIntervalId = null; // Set to null to indicate it's paused
+                    statusIntervalId = null; 
                 }
 
                 const accessIp = data.client_ip || detectedClientIp || 'Your IP';
+                const sshCommand = `ssh ubuntu@${config.elasticIp}`;
+
                 content = `
                     <h3>✅ Access Granted!</h3>
-                    <p><strong>Instance Status:</strong> ${data.message}</p>
-                    <p><strong>Authenticated as:</strong> ${data.cognito_user}</p>
-                    <p><strong>Access granted for IP:</strong> ${accessIp}</p>
-                    <a href="${data.dcv_url}" target="_blank" class="dcv-link">🖥️ Connect to DCV Session</a>
+                    <p>Your IP <strong>(${accessIp})</strong> has been authorized for the selected ports.</p>
+
+                    ${data.ports_opened.includes('8443') ? `
+                        <a href="${data.dcv_url}" target="_blank" class="dcv-link">🖥️ Connect to DCV Session</a>
+                    ` : ''}
                     
+                    ${data.ports_opened.includes('22') ? `
+                    <div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; font-family: monospace; font-size: 14px; text-align: left;">
+                        <p style="font-family: sans-serif; margin-bottom: 5px; font-weight: bold;">SSH Access (Port 22):</p>
+                        <code>${sshCommand}</code>
+                    </div>
+                    ` : ''}
+
                     <div id="refresh-status" style="margin-top: 15px; font-size: 13px; opacity: 0.9;">
                         <p>Auto-refresh is paused.</p>
                         <button class="logout-btn" onclick="resumeStatusChecks()">Resume Auto-Refresh</button>
                     </div>
                 `;
             } else if (isSuccess && data.message) {
-                content = `
-                    <h3>✅ Success</h3>
-                    <p>${data.message}</p>
-                `;
+                content = `<h3>✅ Success</h3><p>${data.message}</p>`;
             } else if (data.error && data.error.includes('Duo')) {
                 content = `
                     <h3>📱 Duo Authentication Required</h3>
@@ -624,18 +606,13 @@
             status.innerHTML = content;
             status.className = statusClass + ' fade-in';
             
-            // Refresh status after action (except for the pausing success case)
-            if (isSuccess && !data.dcv_url) {
-                setTimeout(() => {
-                    checkInstanceStatus();
-                }, 3000);
+            if (isSuccess && !(data.ports_opened && data.ports_opened.length > 0)) {
+                setTimeout(() => { checkInstanceStatus(); }, 3000);
             }
         }
 
         function resumeStatusChecks() {
-            // Prevent multiple timers from running
             if (!statusIntervalId) {
-                // Restart the periodic check
                 statusIntervalId = setInterval(() => {
                     if (idToken) {
                         try {
@@ -643,24 +620,17 @@
                             if (Date.now() < payload.exp * 1000) {
                                 checkInstanceStatus();
                             } else {
-                                clearInterval(statusIntervalId); // Stop timer on expiry
+                                clearInterval(statusIntervalId);
                                 clearSession();
                                 showLoginSection();
                                 showStatus({ error: 'Session expired. Please sign in again.' }, false);
                             }
-                        } catch (e) {
-                            console.error('Token check failed:', e);
-                        }
+                        } catch (e) { console.error('Token check failed:', e); }
                     }
-                }, 30000); // Check every 30 seconds
+                }, 30000);
 
-                // Update the UI to show that refreshing is active again
                 const refreshStatus = document.getElementById('refresh-status');
-                if(refreshStatus) {
-                    refreshStatus.innerHTML = '<p>Auto-refresh is active.</p>';
-                }
-                
-                // Immediately check status upon resuming
+                if(refreshStatus) refreshStatus.innerHTML = '<p>Auto-refresh is active.</p>';
                 checkInstanceStatus();
             }
         }
@@ -673,8 +643,17 @@
                 showStatus({ error: 'Please enter your Duo username' }, false);
                 return;
             }
-            
-            makeAuthenticatedRequest('start', username, sourceIp || null);
+
+            const portsToOpen = [];
+            if (document.getElementById('port_dcv').checked) portsToOpen.push('8443');
+            if (document.getElementById('port_ssh').checked) portsToOpen.push('22');
+
+            if (portsToOpen.length === 0) {
+                showStatus({ error: 'Please select at least one port to open.' }, false);
+                return;
+            }
+
+            makeAuthenticatedRequest('start', username, sourceIp || null, portsToOpen);
         }
 
         function stopInstance() {
@@ -687,32 +666,26 @@
             makeAuthenticatedRequest('status');
         }
 
-        // Handle form submission
         document.getElementById('dcvForm').addEventListener('submit', function(e) {
             e.preventDefault();
             startInstance();
         });
 
-        // Periodic status check
         statusIntervalId = setInterval(() => {
             if (idToken) {
-                // Check if token is still valid
                 try {
                     const payload = JSON.parse(atob(idToken.split('.')[1]));
                     if (Date.now() < payload.exp * 1000) {
                         checkInstanceStatus();
                     } else {
-                        // Token expired
-                        clearInterval(statusIntervalId); // Stop the timer
+                        clearInterval(statusIntervalId);
                         clearSession();
                         showLoginSection();
                         showStatus({ error: 'Session expired. Please sign in again.' }, false);
                     }
-                } catch (e) {
-                    console.error('Token check failed:', e);
-                }
+                } catch (e) { console.error('Token check failed:', e); }
             }
-        }, 30000); // Check every 30 seconds
+        }, 30000);
     </script>
 </body>
 </html>
