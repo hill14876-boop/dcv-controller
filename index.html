@@ -277,7 +277,6 @@
             <p>Ubuntu 22.04 LTS Secure Desktop</p>
         </div>
 
-        <!-- Login Section -->
         <div id="loginSection" class="auth-container">
             <div class="security-info">
                 <strong>🔐 Enhanced Security:</strong>
@@ -294,7 +293,6 @@
             </div>
         </div>
 
-        <!-- Main App Section (hidden until authenticated) -->
         <div id="appSection" class="hidden">
             <div class="user-info">
                 <strong>Authenticated User</strong><br>
@@ -355,6 +353,7 @@
         let accessToken = null;
         let userEmail = null;
         let detectedClientIp = null;
+        let statusIntervalId = null; // Variable to hold the timer ID
 
         // Check if user is already logged in on page load
         window.addEventListener('load', function() {
@@ -582,19 +581,24 @@
             let content = '';
             
             if (isSuccess && data.dcv_url) {
+                // 1. Stop the automatic timer
+                if (statusIntervalId) {
+                    clearInterval(statusIntervalId);
+                    statusIntervalId = null; // Set to null to indicate it's paused
+                }
+
                 const accessIp = data.client_ip || detectedClientIp || 'Your IP';
                 content = `
                     <h3>✅ Access Granted!</h3>
                     <p><strong>Instance Status:</strong> ${data.message}</p>
                     <p><strong>Authenticated as:</strong> ${data.cognito_user}</p>
-                    <p><strong>Duo User:</strong> ${data.duo_username}</p>
                     <p><strong>Access granted for IP:</strong> ${accessIp}</p>
-                    <p><strong>Session timeout:</strong> ${data.session_timeout}</p>
-                    <p><strong>Ready time:</strong> ${data.estimated_ready_time}</p>
                     <a href="${data.dcv_url}" target="_blank" class="dcv-link">🖥️ Connect to DCV Session</a>
-                    <p style="font-size: 12px; margin-top: 15px; opacity: 0.8;">
-                        💡 Instance: t3.medium (${config.elasticIp}) • Ubuntu 22.04 LTS with MATE Desktop
-                    </p>
+                    
+                    <div id="refresh-status" style="margin-top: 15px; font-size: 13px; opacity: 0.9;">
+                        <p>Auto-refresh is paused.</p>
+                        <button class="logout-btn" onclick="resumeStatusChecks()">Resume Auto-Refresh</button>
+                    </div>
                 `;
             } else if (isSuccess && data.message) {
                 content = `
@@ -620,11 +624,44 @@
             status.innerHTML = content;
             status.className = statusClass + ' fade-in';
             
-            // Refresh status after action
-            if (isSuccess) {
+            // Refresh status after action (except for the pausing success case)
+            if (isSuccess && !data.dcv_url) {
                 setTimeout(() => {
                     checkInstanceStatus();
                 }, 3000);
+            }
+        }
+
+        function resumeStatusChecks() {
+            // Prevent multiple timers from running
+            if (!statusIntervalId) {
+                // Restart the periodic check
+                statusIntervalId = setInterval(() => {
+                    if (idToken) {
+                        try {
+                            const payload = JSON.parse(atob(idToken.split('.')[1]));
+                            if (Date.now() < payload.exp * 1000) {
+                                checkInstanceStatus();
+                            } else {
+                                clearInterval(statusIntervalId); // Stop timer on expiry
+                                clearSession();
+                                showLoginSection();
+                                showStatus({ error: 'Session expired. Please sign in again.' }, false);
+                            }
+                        } catch (e) {
+                            console.error('Token check failed:', e);
+                        }
+                    }
+                }, 30000); // Check every 30 seconds
+
+                // Update the UI to show that refreshing is active again
+                const refreshStatus = document.getElementById('refresh-status');
+                if(refreshStatus) {
+                    refreshStatus.innerHTML = '<p>Auto-refresh is active.</p>';
+                }
+                
+                // Immediately check status upon resuming
+                checkInstanceStatus();
             }
         }
 
@@ -657,7 +694,7 @@
         });
 
         // Periodic status check
-        setInterval(() => {
+        statusIntervalId = setInterval(() => {
             if (idToken) {
                 // Check if token is still valid
                 try {
@@ -666,6 +703,7 @@
                         checkInstanceStatus();
                     } else {
                         // Token expired
+                        clearInterval(statusIntervalId); // Stop the timer
                         clearSession();
                         showLoginSection();
                         showStatus({ error: 'Session expired. Please sign in again.' }, false);
