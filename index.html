@@ -116,6 +116,59 @@
             text-align: center;
         }
 
+        .port-selection {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .port-selection label {
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-container:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #4CAF50;
+        }
+
+        .checkbox-container span {
+            font-size: 14px;
+            user-select: none;
+        }
+
+        .port-info {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-top: 10px;
+            text-align: center;
+        }
+
         .button-group {
             display: flex;
             gap: 15px;
@@ -200,7 +253,7 @@
             border-left-color: #2196F3;
         }
 
-        .dcv-link {
+        .dcv-link, .ssh-info {
             display: inline-block;
             background: linear-gradient(45deg, #2196F3, #1976D2);
             color: white;
@@ -208,13 +261,19 @@
             border-radius: 8px;
             text-decoration: none;
             margin-top: 15px;
+            margin-right: 10px;
             font-weight: 600;
             transition: all 0.3s ease;
         }
 
-        .dcv-link:hover {
+        .dcv-link:hover, .ssh-info:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 16px rgba(33, 150, 243, 0.3);
+        }
+
+        .ssh-info {
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+            cursor: default;
         }
 
         .loading {
@@ -318,17 +377,20 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Ports to Open:</label>
-                    <div style="display: flex; gap: 20px; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 12px;">
-                        <label for="port_dcv" style="display: flex; align-items: center; cursor: pointer; font-weight: normal;">
-                            <input type="checkbox" id="port_dcv" value="8443" checked style="width: 20px; height: 20px; margin-right: 10px;">
-                            DCV (8443)
-                        </label>
-                        <label for="port_ssh" style="display: flex; align-items: center; cursor: pointer; font-weight: normal;">
-                            <input type="checkbox" id="port_ssh" value="22" style="width: 20px; height: 20px; margin-right: 10px;">
-                            SSH (22)
-                        </label>
+                <div class="port-selection">
+                    <label>Port Access:</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="port-dcv" name="ports" value="8443" checked>
+                            <span>DCV (8443)</span>
+                        </div>
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="port-ssh" name="ports" value="22">
+                            <span>SSH (22)</span>
+                        </div>
+                    </div>
+                    <div class="port-info">
+                        Select which ports to enable access for your IP address
                     </div>
                 </div>
 
@@ -355,9 +417,9 @@
         // ===== CONFIGURATION - UPDATE THESE VALUES =====
         const config = {
             region: 'us-east-1',
-            userPoolId: 'us-east-1_JJEyrfaNJ',  // Replace with your User Pool ID
-            clientId: '7dkrkqdiasniqsvs5qdm2omlhf',  // Replace with your App Client ID
-            cognitoDomain: 'us-east-1jjeyrfanj',  // Replace with your Cognito domain prefix
+            userPoolId: 'us-east-1_JJEyrfaNJ',  // Your User Pool ID
+            clientId: '7dkrkqdiasniqsvs5qdm2omlhf',  // Your App Client ID
+            cognitoDomain: 'us-east-1jjeyrfanj',  // Your Cognito domain prefix
             apiGatewayUrl: 'https://9wg7zku23i.execute-api.us-east-1.amazonaws.com/prod/manage',
             elasticIp: '3.214.88.198'  // Your DCV server IP
         };
@@ -367,13 +429,39 @@
         let accessToken = null;
         let userEmail = null;
         let detectedClientIp = null;
-        let statusIntervalId = null; // Variable to hold the timer ID
+        let statusIntervalId = null;
 
         // Check if user is already logged in on page load
         window.addEventListener('load', function() {
             detectClientIp();
             checkAuthStatus();
+            
+            // Add event listeners for checkboxes to ensure at least one is selected
+            document.getElementById('port-dcv').addEventListener('change', validatePortSelection);
+            document.getElementById('port-ssh').addEventListener('change', validatePortSelection);
         });
+
+        function validatePortSelection() {
+            const dcvChecked = document.getElementById('port-dcv').checked;
+            const sshChecked = document.getElementById('port-ssh').checked;
+            
+            // Ensure at least one port is selected
+            if (!dcvChecked && !sshChecked) {
+                document.getElementById('port-dcv').checked = true;
+                alert('At least one port must be selected');
+            }
+        }
+
+        function getSelectedPorts() {
+            const ports = [];
+            if (document.getElementById('port-dcv').checked) {
+                ports.push(8443);
+            }
+            if (document.getElementById('port-ssh').checked) {
+                ports.push(22);
+            }
+            return ports;
+        }
 
         // Detect client IP address
         async function detectClientIp() {
@@ -411,11 +499,14 @@
                         if (savedDuoUsername) {
                             document.getElementById('username').value = savedDuoUsername;
                         }
-
-                        // Immediately set a neutral "checking" state to prevent flash of incorrect content
-                        const startBtn = document.getElementById('startBtn');
-                        startBtn.innerHTML = '🔄 Checking Status...';
-                        startBtn.disabled = true;
+                        
+                        // Restore saved port preferences
+                        const savedPorts = localStorage.getItem('selected_ports');
+                        if (savedPorts) {
+                            const ports = JSON.parse(savedPorts);
+                            document.getElementById('port-dcv').checked = ports.includes(8443);
+                            document.getElementById('port-ssh').checked = ports.includes(22);
+                        }
                         
                         checkInstanceStatus();
                         return;
@@ -423,14 +514,17 @@
                 } catch (e) {
                     console.error('Token validation failed:', e);
                 }
+                
                 clearSession();
             }
+            
             handleAuthRedirect();
         }
 
         function handleAuthRedirect() {
             const hash = window.location.hash.substring(1);
             const params = new URLSearchParams(hash);
+            
             const idTokenFromUrl = params.get('id_token');
             const accessTokenFromUrl = params.get('access_token');
             
@@ -450,6 +544,7 @@
                     
                     showAppSection();
                     document.getElementById('userEmail').textContent = userEmail;
+                    
                     checkInstanceStatus();
                 } catch (e) {
                     console.error('Failed to parse token:', e);
@@ -490,6 +585,7 @@
             userEmail = null;
         }
 
+        // Save Duo username to localStorage
         document.getElementById('username').addEventListener('change', function() {
             localStorage.setItem('duo_username', this.value);
         });
@@ -511,24 +607,34 @@
             }
 
             try {
-                if (!idToken) throw new Error('Not authenticated. Please sign in.');
+                if (!idToken) {
+                    throw new Error('Not authenticated. Please sign in.');
+                }
 
                 const payload = { action };
-                if (duo_username) payload.duo_username = duo_username;
-                if (source_ip) payload.source_ip = source_ip;
-                else if (detectedClientIp && action === 'start') payload.source_ip = detectedClientIp;
-
-                if (ports && action === 'start') {
-                    payload.ports_to_open = ports;
+                if (duo_username) {
+                    payload.duo_username = duo_username;
+                }
+                if (source_ip) {
+                    payload.source_ip = source_ip;
+                } else if (detectedClientIp && action === 'start') {
+                    payload.source_ip = detectedClientIp;
+                }
+                if (ports) {
+                    payload.ports = ports;
                 }
 
                 const response = await fetch(config.apiGatewayUrl, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': idToken },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': idToken
+                    },
                     body: JSON.stringify(payload)
                 });
 
                 const data = await response.json();
+                
                 loading.style.display = 'none';
                 
                 if (action === 'status') {
@@ -545,6 +651,7 @@
                 } else {
                     showStatus(data, response.status === 200);
                 }
+                
             } catch (error) {
                 loading.style.display = 'none';
                 showStatus({ error: `Request failed: ${error.message}` }, false);
@@ -556,40 +663,38 @@
             status.classList.remove('hidden', 'fade-in');
             
             let statusClass = 'status-card';
-            if (!isSuccess) statusClass += ' error';
-            else if (data.message && data.message.includes('already running')) statusClass += ' info';
+            if (!isSuccess) {
+                statusClass += ' error';
+            } else if (data.message && data.message.includes('already running')) {
+                statusClass += ' info';
+            }
             
             let content = '';
             
-            if (isSuccess && (data.ports_opened && data.ports_opened.length > 0)) {
+            if (isSuccess && (data.dcv_url || data.ssh_enabled)) {
                 if (statusIntervalId) {
                     clearInterval(statusIntervalId);
-                    statusIntervalId = null; 
+                    statusIntervalId = null;
                 }
-                
-                // Immediately update the button on success
-                const startBtn = document.getElementById('startBtn');
-                startBtn.innerHTML = '✅ Instance Running';
-                startBtn.disabled = false; // Ensure button is enabled
 
                 const accessIp = data.client_ip || detectedClientIp || 'Your IP';
-                const sshCommand = `ssh ubuntu@${config.elasticIp}`;
-
                 content = `
                     <h3>✅ Access Granted!</h3>
-                    <p>Your IP <strong>(${accessIp})</strong> has been authorized for the selected ports.</p>
-
-                    ${data.ports_opened.includes('8443') ? `
-                        <a href="${data.dcv_url}" target="_blank" class="dcv-link">🖥️ Connect to DCV Session</a>
-                    ` : ''}
-                    
-                    ${data.ports_opened.includes('22') ? `
-                    <div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; font-family: monospace; font-size: 14px; text-align: left;">
-                        <p style="font-family: sans-serif; margin-bottom: 5px; font-weight: bold;">SSH Access (Port 22):</p>
-                        <code>${sshCommand}</code>
-                    </div>
-                    ` : ''}
-
+                    <p><strong>Instance Status:</strong> ${data.message}</p>
+                    <p><strong>Authenticated as:</strong> ${data.cognito_user}</p>
+                    <p><strong>Access granted for IP:</strong> ${accessIp}</p>
+                    <p><strong>Enabled ports:</strong> ${data.enabled_ports ? data.enabled_ports.join(', ') : 'N/A'}</p>
+                `;
+                
+                if (data.dcv_url) {
+                    content += `<a href="${data.dcv_url}" target="_blank" class="dcv-link">🖥️ Connect to DCV Session</a>`;
+                }
+                
+                if (data.ssh_enabled) {
+                    content += `<span class="ssh-info">🔐 SSH: ${config.elasticIp}:22</span>`;
+                }
+                
+                content += `
                     <div id="refresh-status" style="margin-top: 15px; font-size: 13px; opacity: 0.9;">
                         <p>Auto-refresh is paused.</p>
                         <button class="logout-btn" onclick="resumeStatusChecks()">Resume Auto-Refresh</button>
@@ -600,17 +705,6 @@
                     <h3>✅ Success</h3>
                     <p>${data.message}</p>
                 `;
-
-                // Check if this is a message from the 'stop' action
-                if (data.message.includes('stopped') || data.message.includes('removed')) {
-                    // Immediately update the button to show a busy state
-                    const startBtn = document.getElementById('startBtn');
-                    startBtn.innerHTML = '⏳ Instance Busy';
-                    startBtn.disabled = true;
-
-                    // Resume automatic checks in case they were paused by a 'start' action
-                    resumeStatusChecks();
-                }
             } else if (data.error && data.error.includes('Duo')) {
                 content = `
                     <h3>📱 Duo Authentication Required</h3>
@@ -630,8 +724,10 @@
             status.innerHTML = content;
             status.className = statusClass + ' fade-in';
             
-            if (isSuccess && !(data.ports_opened && data.ports_opened.length > 0)) {
-                setTimeout(() => { checkInstanceStatus(); }, 3000);
+            if (isSuccess && !(data.dcv_url || data.ssh_enabled)) {
+                setTimeout(() => {
+                    checkInstanceStatus();
+                }, 3000);
             }
         }
 
@@ -649,12 +745,17 @@
                                 showLoginSection();
                                 showStatus({ error: 'Session expired. Please sign in again.' }, false);
                             }
-                        } catch (e) { console.error('Token check failed:', e); }
+                        } catch (e) {
+                            console.error('Token check failed:', e);
+                        }
                     }
                 }, 30000);
 
                 const refreshStatus = document.getElementById('refresh-status');
-                if(refreshStatus) refreshStatus.innerHTML = '<p>Auto-refresh is active.</p>';
+                if(refreshStatus) {
+                    refreshStatus.innerHTML = '<p>Auto-refresh is active.</p>';
+                }
+                
                 checkInstanceStatus();
             }
         }
@@ -662,22 +763,22 @@
         function startInstance() {
             const username = document.getElementById('username').value.trim();
             const sourceIp = document.getElementById('ip_address').value.trim();
+            const selectedPorts = getSelectedPorts();
             
             if (!username) {
                 showStatus({ error: 'Please enter your Duo username' }, false);
                 return;
             }
-
-            const portsToOpen = [];
-            if (document.getElementById('port_dcv').checked) portsToOpen.push('8443');
-            if (document.getElementById('port_ssh').checked) portsToOpen.push('22');
-
-            if (portsToOpen.length === 0) {
-                showStatus({ error: 'Please select at least one port to open.' }, false);
+            
+            if (selectedPorts.length === 0) {
+                showStatus({ error: 'Please select at least one port' }, false);
                 return;
             }
-
-            makeAuthenticatedRequest('start', username, sourceIp || null, portsToOpen);
+            
+            // Save port preferences
+            localStorage.setItem('selected_ports', JSON.stringify(selectedPorts));
+            
+            makeAuthenticatedRequest('start', username, sourceIp || null, selectedPorts);
         }
 
         function stopInstance() {
@@ -690,11 +791,13 @@
             makeAuthenticatedRequest('status');
         }
 
+        // Handle form submission
         document.getElementById('dcvForm').addEventListener('submit', function(e) {
             e.preventDefault();
             startInstance();
         });
 
+        // Periodic status check
         statusIntervalId = setInterval(() => {
             if (idToken) {
                 try {
@@ -707,7 +810,9 @@
                         showLoginSection();
                         showStatus({ error: 'Session expired. Please sign in again.' }, false);
                     }
-                } catch (e) { console.error('Token check failed:', e); }
+                } catch (e) {
+                    console.error('Token check failed:', e);
+                }
             }
         }, 30000);
     </script>
