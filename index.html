@@ -411,6 +411,11 @@
                         if (savedDuoUsername) {
                             document.getElementById('username').value = savedDuoUsername;
                         }
+
+                        // Immediately set a neutral "checking" state to prevent flash of incorrect content
+                        const startBtn = document.getElementById('startBtn');
+                        startBtn.innerHTML = '🔄 Checking Status...';
+                        startBtn.disabled = true;
                         
                         checkInstanceStatus();
                         return;
@@ -561,6 +566,11 @@
                     clearInterval(statusIntervalId);
                     statusIntervalId = null; 
                 }
+                
+                // Immediately update the button on success
+                const startBtn = document.getElementById('startBtn');
+                startBtn.innerHTML = '✅ Instance Running';
+                startBtn.disabled = false; // Ensure button is enabled
 
                 const accessIp = data.client_ip || detectedClientIp || 'Your IP';
                 const sshCommand = `ssh ubuntu@${config.elasticIp}`;
